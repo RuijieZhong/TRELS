@@ -1,0 +1,38 @@
+import numpy as np
+import pandas as pd
+def add_top(RegionName):
+    return str(RegionName)+'_top'
+def add_middle(RegionName):
+    return str(RegionName)+'_middle'
+def add_bottom(RegionName):
+    return str(RegionName)+'_bottom'
+
+def clean(data,county):
+    dataframe= pd.read_excel(data)
+    df = dataframe.replace(np.nan, 0)
+    df = df.drop(columns = ['RegionID','SizeRank','RegionType','StateName','Metro','StateCodeFIPS','MunicipalCodeFIPS','State'])
+    df = df.set_index(['RegionName'])
+    df.columns = pd.to_datetime(df.columns)
+    df = df[df.index == county]
+    df_sum = df[df.columns[df.columns.month == 1]]
+    df_sum = df_sum.pct_change(axis='columns', periods=1).reset_index()
+    for i in range(2,13):
+        df_change = df[df.columns[df.columns.month == i]]
+        df_change = df_change.pct_change(axis='columns', periods=1).reset_index()
+        df_sum = df_sum.merge(df_change, right_on ='RegionName', left_on = 'RegionName')
+        df_sum = df_sum.set_index(['RegionName'])
+        df_sum = df_sum[df_sum.columns.sort_values()].reset_index()
+    return df_sum
+
+
+def finalize(county):
+    top = clean('topc.xlsx',county)
+    top = top.assign(RegionName = top.get('RegionName').apply(add_top))
+    middle = clean('middlec.xlsx',county)
+    middle = middle.assign(RegionName = middle.get('RegionName').apply(add_middle))
+    bottom = clean('bottomc.xlsx',county)
+    bottom = bottom.assign(RegionName = bottom.get('RegionName').apply(add_bottom))
+    df_final = pd.concat([top,middle,bottom]).sort_index()
+    df_final = df_final.reset_index().set_index(['index','RegionName'])
+    df_final = df_final.transpose()
+    return df_final
