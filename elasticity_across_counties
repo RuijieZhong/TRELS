@@ -1,0 +1,20 @@
+import numpy as np
+import pandas as pd
+def clean(county):
+    dataframe= pd.read_excel('middle.xlsx')
+    df = dataframe.replace(np.nan, 0)
+    df = df.drop(columns = ['RegionID','SizeRank','RegionType','StateName','Metro','StateCodeFIPS','MunicipalCodeFIPS','State'])
+    df = df.set_index(['RegionName'])
+    df.columns = pd.to_datetime(df.columns)
+    df = df[df.index == county]
+    df_sum = df[df.columns[df.columns.month == 1]]
+    df_sum = df_sum.pct_change(axis='columns', periods=1).reset_index()
+    for i in range(2,13):
+        df_change = df[df.columns[df.columns.month == i]]
+        df_change = df_change.pct_change(axis='columns', periods=1).reset_index()
+        df_sum = df_sum.merge(df_change, right_on ='RegionName', left_on = 'RegionName')
+        df_sum = df_sum.set_index(['RegionName'])
+        df_sum = df_sum[df_sum.columns.sort_values()].reset_index()
+    df_sum = df_sum.reset_index().set_index(['index','RegionName'])
+    df_sum = df_sum.transpose()
+    return df_sum[df_sum != -1].plot(kind = 'line',figsize = (20,20))
